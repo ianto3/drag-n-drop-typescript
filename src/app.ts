@@ -1,8 +1,23 @@
+// Project type class
+enum ProjectStatus {Active, Finished}
+
+class Project {
+    constructor(
+        public id: string,
+        public title: string, 
+        public description: string, 
+        public people: number,
+        public status: ProjectStatus) {}
+}
+
+
 // Project state management class
+type Listener  = (items: Project[]) => void; // void -> we don't care about any return
+
 class ProjectStore {
     // Array of listener function we call when we update states.
-    private listeners: any[] = [];
-    private projects: any[] = [];
+    private listeners: Listener[] = [];
+    private projects: Project[] = [];
     private static instance: ProjectStore;
 
     private constructor() {
@@ -17,17 +32,18 @@ class ProjectStore {
         return this.instance;
     }
 
-    addListener(listener: Function) {
+    addListener(listener: Listener) {
         this.listeners.push(listener);
     }
 
     addProject(title: string, description: string, numOfPeople: number) {
-        const newProject = {
-            id: Math.random().toString(),
+        const newProject = new Project(
+            Math.random().toString(),
             title,
             description,
-            people: numOfPeople
-        };
+            numOfPeople,
+            ProjectStatus.Active // enum
+        )
         this.projects.push(newProject);
         for (const listener of this.listeners) {
             // Use slice to send copy of the array and not the original.
@@ -95,7 +111,7 @@ class ProjectList {
     templateEl: HTMLTemplateElement;
     hostEl: HTMLDivElement;
     sectionEl: HTMLElement;
-    assignedProjects: any[];
+    assignedProjects: Project[];
 
     constructor(private type: "active" | "finished"){
         this.templateEl = document.getElementById("project-list")! as HTMLTemplateElement;
@@ -107,7 +123,7 @@ class ProjectList {
         this.sectionEl = importedNode.firstElementChild! as HTMLElement;
         this.sectionEl.id = `${this.type}-projects`; // active-projects and finished-projects
         
-        projectStore.addListener((projects: any[]) => {
+        projectStore.addListener((projects: Project[]) => {
             this.assignedProjects = projects;
             this.renderProjects();
         })
