@@ -9,7 +9,7 @@ interface DragTarget{
     // Permit the drop
     dragOverHandler(event: DragEvent): void;
     // Handle the drop
-    dragHandler(event: DragEvent): void;
+    dropHandler(event: DragEvent): void;
     // Useful for visual feedback
     dragLeaveHandler(event: DragEvent): void;
 }
@@ -64,8 +64,19 @@ class ProjectStore extends State<Project>{
             ProjectStatus.Active // enum
         )
         this.projects.push(newProject);
+        this.updateListeners();
+    }
+
+    moveProject(projectId: string, newStatus: ProjectStatus) {
+        const project = this.projects.find(project => project.id === projectId);
+        if (project && project.status !== newStatus) {
+            project.status = newStatus;
+            this.updateListeners();
+        }
+    }
+
+    private updateListeners() {
         for (const listener of this.listeners) {
-            // Use slice to send copy of the array and not the original.
             listener(this.projects.slice());
         }
     }
@@ -188,7 +199,8 @@ class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> implements 
 
     @autobind
     dragStartHandler(event: DragEvent) {
-        console.log(event)
+        event.dataTransfer!.setData("text/plain", this.project.id);
+        event.dataTransfer!.effectAllowed = "move";
     }
 
     dragEndHandler(_: DragEvent) {
@@ -209,7 +221,7 @@ class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> implements 
 }
 
 // ProjectList Class
-class ProjectList extends Component<HTMLDivElement, HTMLElement> {
+class ProjectList extends Component<HTMLDivElement, HTMLElement> implements DragTarget{
     assignedProjects: Project[];
 
     constructor(private type: "active" | "finished"){
@@ -221,8 +233,39 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
         this.renderContent();
     }
 
+    @autobind
+    dragOverHandler(event: DragEvent) {
+        if (event.dataTransfer && event.dataTransfer.types[0] === "text/plain") {
+            event.preventDefault(); 
+            // The default is to not allow dropping.
+            // For this element we allow it, it will fire the "drop" event (dropHandler)
+            const listEl = this.element.querySelector("ul")!;
+            listEl.classList.add("droppable");
+        }
+    }
+
+    @autobind
+    dropHandler(event: DragEvent) {
+        const projectId = event.dataTransfer!.getData("text/plain");
+        projectStore.moveProject(
+            projectId, 
+            this.type === "active" ? 
+            ProjectStatus.Active : 
+            ProjectStatus.Finished);
+    }
+
+    @autobind
+    dragLeaveHandler(_: DragEvent) {
+        const listEl = this.element.querySelector("ul")!;
+        listEl.classList.remove("droppable");
+    }
+
     // As a convention public classes go before private ones
     configure() {
+        this.element.addEventListener("dragover", this.dragOverHandler);
+        this.element.addEventListener("drop", this.dropHandler);
+        this.element.addEventListener("dragleave", this.dragLeaveHandler);
+
         projectStore.addListener((projects: Project[]) => {
             const relevantProjects = projects.filter(project => {
                 if (this.type === "active"){
