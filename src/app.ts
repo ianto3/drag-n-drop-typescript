@@ -1,3 +1,19 @@
+// Drag-n-drop interfaces
+// Will require us to implement certain methods in class with these interfaces.
+interface Draggable {
+    dragStartHandler(event: DragEvent): void;
+    dragEndHandler(event: DragEvent): void;
+}
+
+interface DragTarget{
+    // Permit the drop
+    dragOverHandler(event: DragEvent): void;
+    // Handle the drop
+    dragHandler(event: DragEvent): void;
+    // Useful for visual feedback
+    dragLeaveHandler(event: DragEvent): void;
+}
+
 // Project type class
 enum ProjectStatus {Active, Finished}
 
@@ -83,7 +99,7 @@ function validate(validatableInput: Validatable) {
     }
     if (validatableInput.min != null && 
         typeof validatableInput.value === "number") {
-            isValid = isValid && validatableInput.value > validatableInput.min;
+            isValid = isValid && validatableInput.value >= validatableInput.min;
     }
     if (validatableInput.max != null && 
         typeof validatableInput.value === "number") {
@@ -150,8 +166,17 @@ function autobind(
 }
 
 // Project item class
-class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> implements Draggable{
     private project: Project;
+
+    // Convention: set getters and setters under fields
+    get persons(){ 
+        if (this.project.people === 1) {
+            return "1 person";
+        } else {
+            return `${this.project.people} people`
+        }
+    }
     
     constructor (hostId: string, project: Project) {
         super("single-project", hostId, false, project.id);
@@ -161,11 +186,23 @@ class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
         this.renderContent();
     }
 
-    configure() {}
+    @autobind
+    dragStartHandler(event: DragEvent) {
+        console.log(event)
+    }
+
+    dragEndHandler(_: DragEvent) {
+        console.log("Drag End")
+    }
+
+    configure() {
+        this.element.addEventListener("dragstart", this.dragStartHandler);
+        this.element.addEventListener("dragend", this.dragEndHandler);
+    }
 
     renderContent() {
         this.element.querySelector("h2")!.textContent = this.project.title;
-        this.element.querySelector("h3")!.textContent = this.project.people.toString();
+        this.element.querySelector("h3")!.textContent = this.persons + " assigned.";
         this.element.querySelector("p")!.textContent = this.project.description;
     }
 
