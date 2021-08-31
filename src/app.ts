@@ -1,5 +1,5 @@
-import { ProjectInputs } from './components/project-input.js';
-import { ProjectList } from './components/project-list.js';
+import { ProjectInputs } from './components/project-input';
+import { ProjectList } from './components/project-list';
 
 // Invoke form
 new ProjectInputs();
